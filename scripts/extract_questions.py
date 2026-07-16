@@ -16,24 +16,33 @@ FOOTER_PATTERNS = [
     re.compile(r"第\s*\d+\s*頁"),
 ]
 HEADER_PATTERNS = [
-    re.compile(r"歷屆試題"),
+    re.compile(r"歷屆[試詴]題"),
+    re.compile(r"公職王"),
     re.compile(r"考試別[：:]"),
     re.compile(r"等\s*別[：:]"),
-    re.compile(r"類科組[：:]"),
+    re.compile(r"類科組別?[：:]"),
     re.compile(r"類\s*科[：:]"),
+    re.compile(r"類科別[：:]"),
     re.compile(r"類\s*別[：:]"),
     re.compile(r"考試類別[：:]"),
+    re.compile(r"甄試類科"),
+    re.compile(r"^專業科目"),
+    re.compile(r"^共同科目"),
     re.compile(r"科\s*目[：:]"),
     re.compile(r"考試時間[：:]"),
     re.compile(r"考試名稱[：:]"),
+    re.compile(r"^說明[：:].{0,30}選項"),
     re.compile(r"^[一二三四五六七八九十]、單選題"),
-    re.compile(r"^\d+\s*年.*考試試題$"),
-    re.compile(r"^\d+\s*年.*考試.*試題"),
-    re.compile(r"^\d+\s*年.*考試.{0,20}類別[：:].*$"),
-    re.compile(r"特種考試.{0,15}(考試|人員)$"),
-    re.compile(r"特種考試"),
-    re.compile(r"考試試題$"),
-    re.compile(r"^[甲乙丙丁戊]、.{0,10}部分$"),
+    re.compile(r"^[壹貳參]、.{0,20}選擇題"),
+    re.compile(r"^.{2,4}老師$"),
+    re.compile(r"^\d+\s*年.*[考詴][試詴]{0,1}試?題$"),
+    re.compile(r"^\d+\s*年.*考[試詴].*[試詴]題"),
+    re.compile(r"^\d+\s*年.*考[試詴].{0,20}類別[：:].*$"),
+    re.compile(r"特種考[試詴].{0,15}(考[試詴]|人員)$"),
+    re.compile(r"特種考[試詴]"),
+    re.compile(r"考[試詴][試詴]題$"),
+    re.compile(r"聯合統一考試"),
+    re.compile(r"^[甲乙丙丁戊]、.{0,10}部分([：:（(]|$)"),
 ]
 
 STEM_END_RE = re.compile(r"[？?]\s*$")
@@ -235,6 +244,82 @@ def parse_questions_glyph_based(lines):
     return questions
 
 
+BRACKET_MARKER_RE = re.compile(r"^【(\d)(?:\s*或\s*\d)?】\s*")
+
+
+def parse_questions_bracket(lines):
+    """Parser for PDFs where each question starts with an embedded answer
+    marker like 【4】. Some of these files additionally mark options with
+    single PUA glyphs; others separate options by column gaps."""
+    questions = []
+    cur_lines = None
+    cur_answer = None
+
+    def flush():
+        nonlocal cur_lines, cur_answer
+        if cur_lines is None:
+            cur_lines = []
+            return
+        joined = "".join("".join(texts) for texts in cur_lines)
+        pua_count = len(ANY_PUA_RE.findall(joined))
+        needs_review = False
+        if pua_count >= 4:
+            parts = ANY_PUA_RE.split(joined)
+            # a question-number glyph may sit right at the start
+            if parts and not parts[0].strip():
+                parts = parts[1:]
+            stem = parts[0].strip() if parts else ""
+            opts = [p.strip() for p in parts[1:]]
+        else:
+            stem_parts = []
+            opts = []
+            mode = "STEM"
+            for texts in cur_lines:
+                if mode == "STEM":
+                    if len(texts) >= 2:
+                        mode = "OPTIONS"
+                        opts.extend(t.strip() for t in texts)
+                    else:
+                        seg = texts[0]
+                        stem_parts.append(seg)
+                        if STEM_END_RE.search(seg):
+                            mode = "OPTIONS"
+                else:
+                    opts.extend(t.strip() for t in texts)
+            stem = "".join(stem_parts).strip()
+        if len(opts) > 4:
+            opts = opts[:3] + ["".join(opts[3:])]
+        if len(opts) < 4:
+            needs_review = True
+            while len(opts) < 4:
+                opts.append("")
+        if stem:
+            questions.append({
+                "text": " ".join(stem.split()),
+                "options": [" ".join(o.split()) for o in opts[:4]],
+                "needsReview": needs_review,
+                "embeddedAnswer": cur_answer,
+            })
+        cur_lines = []
+        cur_answer = None
+
+    for texts in lines:
+        first = texts[0] if texts else ""
+        m = BRACKET_MARKER_RE.match(first.strip())
+        if m:
+            flush()
+            cur_answer = int(m.group(1))
+            rest = BRACKET_MARKER_RE.sub("", first.strip(), count=1)
+            texts = ([rest] if rest else []) + list(texts[1:])
+            if not texts:
+                continue
+        if cur_lines is None:
+            continue  # ignore anything before the first marker (essay section etc.)
+        cur_lines.append(texts)
+    flush()
+    return questions
+
+
 CATEGORY_MAP = [
     (re.compile(r"原住民"), "原住民特考五等"),
     (re.compile(r"身心障礙|身心特考|身障"), "身心障礙特考五等"),
@@ -289,7 +374,12 @@ def main():
         base_name = fname.replace(".pdf", "")
         try:
             lines, has_pua = clean_lines_for_pdf(path)
-            if has_pua:
+            n_bracket = sum(1 for ln in lines if BRACKET_MARKER_RE.match(ln.strip()))
+            if n_bracket >= 5:
+                word_lines = word_lines_for_pdf(path)
+                questions = parse_questions_bracket(word_lines)
+                parser_used = "bracket"
+            elif has_pua:
                 questions = parse_questions_glyph_based(lines)
                 parser_used = "glyph"
             else:
