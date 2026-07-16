@@ -1,0 +1,7 @@
+{
+  "sourceFile": "114原住民特考五等-法學大意",
+  "answers": [2, 4, 1, 1, 4, 4, 3, 4, 4, 4, 2, 4, 4, 1, 2, 2, 2, 4, 1, 3, 2, 1, 3, 2, 3, 2, 3, 2, 4, 4, 1, 4, 2, 2, 2, 2, 1, 3, 1, 1, 4, 4, 3, 4, 2, 2, 4, 3, 3, 2],
+  "answerNumbering": "1-indexed position within the 4 options, in question order",
+  "source": "https://wwwq.moex.gov.tw/exam/wHandExamQandA_File.ashx?t=S&code=114140&c=703&s=0613&q=1",
+  "confidence": "official"
+}

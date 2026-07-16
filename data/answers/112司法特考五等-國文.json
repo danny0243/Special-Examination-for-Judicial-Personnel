@@ -1,0 +1,7 @@
+{
+  "sourceFile": "112司法特考五等-國文",
+  "answers": [3,3,1,4,1,4,3,4,3,1,4,4,1,4,1,2,3,4,4,1,4,1,4,2,1,2,2,4,2,1,2,3,2,3,3,"24","34","35","45","45","24","14","134","45","12"],
+  "answerNumbering": "1-indexed position within the 4 options, in question order (1=A,2=B,3=C,4=D). Questions 1-35 are single-choice (numeric). Questions 36-45 are multiple-choice (複選題); their answers are given as strings of concatenated option numbers, e.g. \"24\" = B and D both correct.",
+  "source": "https://wwwq.moex.gov.tw/exam/wHandExamQandA_File.ashx?t=S&code=112130&c=301&s=0104&q=1",
+  "confidence": "official"
+}

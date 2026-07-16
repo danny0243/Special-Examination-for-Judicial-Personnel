@@ -1,0 +1,7 @@
+{
+  "sourceFile": "109司法特考五等-民事訴訟法大意與刑事訴訟法大意",
+  "answers": [1,2,1,3,3,4,2,2,1,3,2,2,4,4,4,3,1,3,4,3,2,4,4,3,3,3,3,1,1,3,3,4,3,4,1,2,4,3,1,4,2,4,3,4,4,2,4,2,2,1],
+  "answerNumbering": "1-indexed position within the 4 options, in question order",
+  "source": "https://wwwq.moex.gov.tw/exam/wHandExamQandA_File.ashx?t=S&code=109130&c=301&s=0517&q=1",
+  "confidence": "official"
+}
