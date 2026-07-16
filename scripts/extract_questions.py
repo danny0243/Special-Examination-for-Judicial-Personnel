@@ -31,6 +31,8 @@ HEADER_PATTERNS = [
     re.compile(r"^\d+\s*年.*考試.*試題"),
     re.compile(r"^\d+\s*年.*考試.{0,20}類別[：:].*$"),
     re.compile(r"特種考試.{0,15}(考試|人員)$"),
+    re.compile(r"特種考試"),
+    re.compile(r"考試試題$"),
     re.compile(r"^[甲乙丙丁戊]、.{0,10}部分$"),
 ]
 

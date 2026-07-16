@@ -31,6 +31,22 @@ function optionTag(i) {
   return ["Ａ", "Ｂ", "Ｃ", "Ｄ"][i] || String(i + 1);
 }
 
+function explanationBlock(q) {
+  if (!q.explanation) return "";
+  const badge =
+    q.answerConfidence === "ai-inferred"
+      ? '<span class="badge" style="background:#5b3fae22;color:#8a6dff">AI 推測答案</span>'
+      : q.answerConfidence === "official"
+        ? '<span class="badge" style="background:#1a8a4a22;color:var(--good)">官方解答</span>'
+        : "";
+  return `
+    <div class="explain">
+      <div class="explain-head">解析 ${badge}</div>
+      <div class="explain-body">${escapeHtml(q.explanation)}</div>
+      ${q.legalBasis ? `<div class="explain-basis">📖 ${escapeHtml(q.legalBasis)}</div>` : ""}
+    </div>`;
+}
+
 async function renderHome() {
   const idx = await loadIndex();
   const bySubject = {};
@@ -62,8 +78,9 @@ async function renderSubject(subject) {
   const grid = el(`<div class="grid"></div>`);
   for (const e of exams) {
     const disabled = !e.hasAnswers;
+    const note = disabled ? "（尚無解答，暫僅供瀏覽）" : !e.hasOfficialAnswers ? "（AI 推測解答）" : "";
     const btn = el(
-      `<button class="pick-btn ${disabled ? "warn" : ""}"><strong>${e.examYear} 年・${e.category}</strong><span class="sub">${e.questionCount} 題${disabled ? "（尚無解答，暫僅供瀏覽）" : ""}</span></button>`
+      `<button class="pick-btn ${disabled ? "warn" : ""}"><strong>${e.examYear} 年・${e.category}</strong><span class="sub">${e.questionCount} 題${note}</span></button>`
     );
     btn.onclick = () => {
       location.hash = `#/quiz/${encodeURIComponent(e.file)}`;
@@ -124,6 +141,10 @@ function drawQuestion(state) {
   if (revealed && !hasAnswer) {
     card.appendChild(el(`<p style="color:var(--muted);font-size:0.85rem">此題目前查無官方解答，不列入計分。</p>`));
   }
+  if (revealed) {
+    const block = explanationBlock(q);
+    if (block) card.appendChild(el(block));
+  }
 
   app.appendChild(card);
 
@@ -183,6 +204,8 @@ function renderResult(state) {
       if (state.answers[idx] === optNum && optNum !== q.answer) b.classList.add("wrong");
       item.appendChild(b);
     });
+    const block = explanationBlock(q);
+    if (block) item.appendChild(el(block));
     app.appendChild(item);
   });
 }

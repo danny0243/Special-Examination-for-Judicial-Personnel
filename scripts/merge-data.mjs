@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const QUESTIONS_DIR = join(ROOT, "data", "questions");
 const ANSWERS_DIR = join(ROOT, "data", "answers");
+const EXPLANATIONS_DIR = join(ROOT, "data", "explanations");
 const OUT_DIR = join(ROOT, "webapp", "data");
 
 if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
@@ -41,10 +42,15 @@ for (const qf of questionFiles) {
     answerDoc = loadJson(answerPath);
   }
   const answers = answerDoc?.answers ?? [];
-  const hasAnswers = answers.length === q.questions.length && answers.length > 0;
-  if (!hasAnswers) missingAnswers.push(base);
+  const hasOfficialAnswers = answers.length === q.questions.length && answers.length > 0;
+  if (!hasOfficialAnswers) missingAnswers.push(base);
   const subject = normalizeSubject(q.subject);
 
+  const explPath = join(EXPLANATIONS_DIR, `${base}.json`);
+  const explArr = existsSync(explPath) ? loadJson(explPath) : [];
+  const explByIndex = new Map(explArr.map((e) => [e.index, e]));
+
+  let hasAnyAnswer = false;
   const merged = {
     sourceFile: q.sourceFile ?? base,
     examYear: q.examYear,
@@ -53,13 +59,23 @@ for (const qf of questionFiles) {
     subject,
     answerSource: answerDoc?.source ?? null,
     answerConfidence: answerDoc?.confidence ?? "not-found",
-    questions: q.questions.map((question, i) => ({
-      index: question.index ?? i + 1,
-      text: question.text,
-      options: question.options,
-      needsReview: !!question.needsReview,
-      answer: hasAnswers ? answers[i] ?? null : null,
-    })),
+    questions: q.questions.map((question, i) => {
+      const idx = question.index ?? i + 1;
+      const expl = explByIndex.get(idx);
+      const officialAnswer = hasOfficialAnswers ? answers[i] ?? null : null;
+      const answer = officialAnswer ?? expl?.answer ?? null;
+      if (answer != null) hasAnyAnswer = true;
+      return {
+        index: idx,
+        text: question.text,
+        options: question.options,
+        needsReview: !!question.needsReview,
+        answer,
+        answerConfidence: officialAnswer != null ? "official" : expl ? "ai-inferred" : null,
+        explanation: expl?.explanation ?? null,
+        legalBasis: expl?.legalBasis ?? null,
+      };
+    }),
   };
 
   writeFileSync(join(OUT_DIR, `${base}.json`), JSON.stringify(merged));
@@ -73,7 +89,8 @@ for (const qf of questionFiles) {
     category: q.examCategory,
     subject,
     questionCount: merged.questions.length,
-    hasAnswers,
+    hasAnswers: hasAnyAnswer,
+    hasOfficialAnswers,
   });
 }
 
