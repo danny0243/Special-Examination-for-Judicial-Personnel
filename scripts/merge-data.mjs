@@ -63,7 +63,7 @@ for (const qf of questionFiles) {
       const idx = question.index ?? i + 1;
       const expl = explByIndex.get(idx);
       const officialAnswer = hasOfficialAnswers ? answers[i] ?? null : null;
-      const answer = officialAnswer ?? expl?.answer ?? null;
+      const answer = officialAnswer ?? expl?.answer ?? expl?.aiAnswer ?? null;
       if (answer != null) hasAnyAnswer = true;
       return {
         index: idx,
